@@ -51,6 +51,8 @@ export default function Editor() {
   const forceUpdate = useCallback(() => setTick(t => t + 1), [])
   const [outlineVisible, setOutlineVisible] = useState(true)
   const [frontMatter, setFrontMatter] = useState<FrontMatterData | null>(initialFrontMatter)
+  const fmUndoStack = useRef<(FrontMatterData | null)[]>([])
+  const fmRedoStack = useRef<(FrontMatterData | null)[]>([])
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null)
   const [fileName, setFileName] = useState<string>('Untitled')
   const [findMode, setFindMode] = useState<'find' | 'replace' | null>(null)
@@ -59,9 +61,31 @@ export default function Editor() {
   const dragCountRef = useRef(0)
 
   const updateFrontMatter = useCallback((fm: FrontMatterData | null) => {
+    fmUndoStack.current.push(frontMatter)
+    fmRedoStack.current = []
     setFrontMatter(fm)
     setIsDirty(true)
-  }, [])
+  }, [frontMatter])
+
+  const undoFrontMatter = useCallback(() => {
+    const prev = fmUndoStack.current.pop()
+    if (prev !== undefined) {
+      fmRedoStack.current.push(frontMatter)
+      setFrontMatter(prev)
+      return true
+    }
+    return false
+  }, [frontMatter])
+
+  const redoFrontMatter = useCallback(() => {
+    const next = fmRedoStack.current.pop()
+    if (next !== undefined) {
+      fmUndoStack.current.push(frontMatter)
+      setFrontMatter(next)
+      return true
+    }
+    return false
+  }, [frontMatter])
 
   const editor = useEditor({
     extensions: [
@@ -255,6 +279,8 @@ export default function Editor() {
     setFileHandle(result.handle)
     setFileName(result.name)
     setIsDirty(false)
+    fmUndoStack.current = []
+    fmRedoStack.current = []
     localStorage.removeItem('md-editor-draft')
   }, [editor, confirmDiscard])
 
@@ -275,6 +301,8 @@ export default function Editor() {
     setFileHandle(null)
     setFileName('Untitled')
     setIsDirty(false)
+    fmUndoStack.current = []
+    fmRedoStack.current = []
     localStorage.removeItem('md-editor-draft')
   }, [editor, confirmDiscard])
 
@@ -310,6 +338,22 @@ export default function Editor() {
       }
 
       if (!editor) return
+
+      // Undo/Redo: try editor first, fall back to front-matter stack
+      if (mod && e.key === 'z' && !e.shiftKey) {
+        if (!editor.can().undo()) {
+          e.preventDefault()
+          undoFrontMatter()
+          return
+        }
+      }
+      if (mod && e.key === 'z' && e.shiftKey) {
+        if (!editor.can().redo()) {
+          e.preventDefault()
+          redoFrontMatter()
+          return
+        }
+      }
 
       // Heading levels: Cmd+1 through Cmd+6, Cmd+0 for paragraph
       if (mod && !e.shiftKey && e.key >= '1' && e.key <= '6') {
@@ -375,7 +419,7 @@ export default function Editor() {
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [handleSave, handleOpen, handleNew, editor, frontMatter])
+  }, [handleSave, handleOpen, handleNew, editor, frontMatter, undoFrontMatter, redoFrontMatter])
 
   if (!editor) return null
 
