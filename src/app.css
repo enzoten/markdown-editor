@@ -713,6 +713,9 @@ body {
   top: 8px;
   right: 8px;
   z-index: 1;
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
 .code-block-lang {
@@ -734,6 +737,23 @@ body {
 .code-block-lang option {
   background: #1e1e1e;
   color: #d4d4d4;
+}
+
+.code-block-copy {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #999;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.code-block-copy:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ccc;
 }
 
 .code-block-wrapper pre {

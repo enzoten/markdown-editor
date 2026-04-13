@@ -65,6 +65,28 @@ export default function TableMenu({ editor }: { editor: Editor }) {
       </button>
       <span className="table-menu-sep" />
       <button
+        className="table-menu-btn"
+        onClick={() => editor.chain().focus().setCellAttribute('textAlign', 'left').run()}
+        title="Align left"
+      >
+        ≡←
+      </button>
+      <button
+        className="table-menu-btn"
+        onClick={() => editor.chain().focus().setCellAttribute('textAlign', 'center').run()}
+        title="Align center"
+      >
+        ≡↔
+      </button>
+      <button
+        className="table-menu-btn"
+        onClick={() => editor.chain().focus().setCellAttribute('textAlign', 'right').run()}
+        title="Align right"
+      >
+        ≡→
+      </button>
+      <span className="table-menu-sep" />
+      <button
         className="table-menu-btn table-menu-btn--danger"
         onClick={() => editor.chain().focus().deleteRow().run()}
         title="Delete row"

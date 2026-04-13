@@ -62,8 +62,40 @@ export default function Editor() {
       TaskItem.configure({ nested: true }),
       Table.configure({ resizable: false }),
       TableRow,
-      TableCell,
-      TableHeader,
+      TableCell.configure({
+        HTMLAttributes: {},
+      }).extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            textAlign: {
+              default: null,
+              parseHTML: (el: HTMLElement) => el.style.textAlign || null,
+              renderHTML: (attrs: Record<string, unknown>) => {
+                if (!attrs.textAlign) return {}
+                return { style: `text-align: ${attrs.textAlign}` }
+              },
+            },
+          }
+        },
+      }),
+      TableHeader.configure({
+        HTMLAttributes: {},
+      }).extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            textAlign: {
+              default: null,
+              parseHTML: (el: HTMLElement) => el.style.textAlign || null,
+              renderHTML: (attrs: Record<string, unknown>) => {
+                if (!attrs.textAlign) return {}
+                return { style: `text-align: ${attrs.textAlign}` }
+              },
+            },
+          }
+        },
+      }),
       CodeBlockLowlight.configure({
         lowlight,
         defaultLanguage: 'plaintext',
@@ -84,6 +116,68 @@ export default function Editor() {
     contentType: 'markdown',
     enableInputRules: false,
     enablePasteRules: false,
+    editorProps: {
+      handleDrop(view, event) {
+        const files = event.dataTransfer?.files
+        if (!files?.length) return false
+        const images = Array.from(files).filter(f => f.type.startsWith('image/'))
+        if (!images.length) return false
+
+        event.preventDefault()
+        const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
+        images.forEach(file => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            const src = reader.result as string
+            const node = view.state.schema.nodes.image.create({ src, alt: file.name })
+            const tr = view.state.tr.insert(pos ?? view.state.selection.from, node)
+            view.dispatch(tr)
+          }
+          reader.readAsDataURL(file)
+        })
+        return true
+      },
+      handlePaste(view, event) {
+        // Handle pasted images from clipboard
+        const items = event.clipboardData?.items
+        if (!items) return false
+        for (const item of Array.from(items)) {
+          if (item.type.startsWith('image/')) {
+            event.preventDefault()
+            const file = item.getAsFile()
+            if (!file) continue
+            const reader = new FileReader()
+            reader.onload = () => {
+              const src = reader.result as string
+              const node = view.state.schema.nodes.image.create({ src, alt: 'Pasted image' })
+              const tr = view.state.tr.replaceSelectionWith(node)
+              view.dispatch(tr)
+            }
+            reader.readAsDataURL(file)
+            return true
+          }
+        }
+
+        // Handle pasted Markdown text — convert to rich content
+        const text = event.clipboardData?.getData('text/plain')
+        if (text && /[*_#\[`~|>-]/.test(text)) {
+          // Looks like it might contain Markdown syntax — parse it
+          const { state } = view
+          event.preventDefault()
+          // Use the editor's Markdown parser via the setContent approach
+          // We need to access the editor instance
+          const tempDiv = document.createElement('div')
+          tempDiv.setAttribute('data-markdown-paste', text)
+          document.body.appendChild(tempDiv)
+          // Dispatch a custom event the editor effect can pick up
+          window.dispatchEvent(new CustomEvent('markdown-paste', { detail: { text, from: state.selection.from } }))
+          tempDiv.remove()
+          return true
+        }
+
+        return false
+      },
+    },
     onSelectionUpdate: forceUpdate,
     onTransaction: forceUpdate,
     onUpdate: () => setIsDirty(true),
@@ -99,6 +193,19 @@ export default function Editor() {
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
+
+  // Handle Markdown paste events from the editorProps handler
+  useEffect(() => {
+    if (!editor) return
+    const handler = (e: Event) => {
+      const { text } = (e as CustomEvent).detail
+      if (text && editor) {
+        editor.chain().focus().insertContent(text, { contentType: 'markdown' }).run()
+      }
+    }
+    window.addEventListener('markdown-paste', handler)
+    return () => window.removeEventListener('markdown-paste', handler)
+  }, [editor])
 
   const confirmDiscard = useCallback(() => {
     if (!isDirty) return true
