@@ -45,6 +45,7 @@ body {
 
 /* Editor wrapper */
 .editor-wrapper {
+  position: relative;
   width: 100%;
   max-width: 1100px;
   display: flex;
@@ -93,6 +94,39 @@ body {
   background: #1a1a1a;
   color: #fff;
   border-color: #1a1a1a;
+}
+
+/* Drop overlay */
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(26, 115, 232, 0.08);
+  border: 2px dashed #1a73e8;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.drop-overlay-content {
+  background: #1a73e8;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.toolbar button.disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.toolbar button.disabled:hover {
+  background: transparent;
+  border-color: transparent;
 }
 
 .toolbar button.code-btn {
@@ -1057,6 +1091,77 @@ body {
 .editor-content .tiptap pre .hljs-selector-class { color: #d7ba7d; }
 .editor-content .tiptap pre .hljs-selector-id { color: #d7ba7d; }
 .editor-content .tiptap pre .hljs-literal { color: #569cd6; }
+
+/* Responsive — tablets and small screens */
+@media (max-width: 768px) {
+  .app-main {
+    padding: 12px;
+  }
+
+  .editor-wrapper {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .outline-sidebar {
+    display: none;
+  }
+
+  .outline-toggle--collapsed {
+    display: none;
+  }
+
+  .editor-content {
+    padding: 20px 16px;
+  }
+
+  .editor-content .tiptap {
+    font-size: 14px;
+  }
+
+  .frontmatter-panel {
+    padding: 8px 12px;
+  }
+
+  .frontmatter-field {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .frontmatter-key {
+    min-width: auto;
+  }
+
+  .toolbar {
+    padding: 4px 8px;
+    gap: 1px;
+  }
+
+  .toolbar button {
+    padding: 4px 6px;
+    min-width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .toolbar select {
+    font-size: 11px;
+    padding: 3px 4px;
+    height: 26px;
+  }
+
+  .toolbar-separator {
+    margin: 0 2px;
+    height: 16px;
+  }
+
+  .table-menu,
+  .image-toolbar,
+  .link-bubble {
+    font-size: 12px;
+  }
+}
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {

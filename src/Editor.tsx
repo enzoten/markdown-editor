@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { StarterKit } from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
@@ -24,7 +24,21 @@ import TableMenu from './TableMenu'
 import ImageToolbar from './ImageToolbar'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 
-const { frontMatter: initialFrontMatter, body: initialBody } = parseFrontMatter(sampleMarkdown)
+function getInitialContent() {
+  try {
+    const saved = localStorage.getItem('md-editor-draft')
+    if (saved) {
+      const draft = JSON.parse(saved)
+      // Only restore drafts less than 24 hours old
+      if (draft.savedAt && Date.now() - draft.savedAt < 86400000) {
+        return { frontMatter: draft.frontMatter as FrontMatterData | null, body: draft.body as string }
+      }
+    }
+  } catch { /* ignore corrupt data */ }
+  return parseFrontMatter(sampleMarkdown)
+}
+
+const { frontMatter: initialFrontMatter, body: initialBody } = getInitialContent()
 
 const lowlight = createLowlight(common)
 
@@ -41,6 +55,8 @@ export default function Editor() {
   const [fileName, setFileName] = useState<string>('Untitled')
   const [findMode, setFindMode] = useState<'find' | 'replace' | null>(null)
   const [isDirty, setIsDirty] = useState(false)
+  const [draggingOver, setDraggingOver] = useState(false)
+  const dragCountRef = useRef(0)
 
   const updateFrontMatter = useCallback((fm: FrontMatterData | null) => {
     setFrontMatter(fm)
@@ -194,6 +210,22 @@ export default function Editor() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
 
+  // Auto-save draft to localStorage every 5 seconds when dirty
+  useEffect(() => {
+    if (!editor || !isDirty) return
+    const timer = setTimeout(() => {
+      try {
+        const body = editor.getMarkdown()
+        localStorage.setItem('md-editor-draft', JSON.stringify({
+          body,
+          frontMatter,
+          savedAt: Date.now(),
+        }))
+      } catch { /* quota exceeded — silently ignore */ }
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [editor, isDirty, frontMatter])
+
   // Handle Markdown paste events from the editorProps handler
   useEffect(() => {
     if (!editor) return
@@ -223,6 +255,7 @@ export default function Editor() {
     setFileHandle(result.handle)
     setFileName(result.name)
     setIsDirty(false)
+    localStorage.removeItem('md-editor-draft')
   }, [editor, confirmDiscard])
 
   const handleSave = useCallback(async () => {
@@ -231,6 +264,7 @@ export default function Editor() {
     const handle = await saveFile(content, fileHandle)
     if (handle) setFileHandle(handle)
     setIsDirty(false)
+    localStorage.removeItem('md-editor-draft')
   }, [editor, frontMatter, fileHandle])
 
   const handleNew = useCallback(() => {
@@ -241,6 +275,7 @@ export default function Editor() {
     setFileHandle(null)
     setFileName('Untitled')
     setIsDirty(false)
+    localStorage.removeItem('md-editor-draft')
   }, [editor, confirmDiscard])
 
   // Keyboard shortcuts
@@ -352,7 +387,28 @@ export default function Editor() {
   })()
 
   return (
-    <div className="editor-wrapper">
+    <div
+      className="editor-wrapper"
+      onDragEnter={(e) => {
+        e.preventDefault()
+        dragCountRef.current++
+        if (e.dataTransfer?.types.includes('Files')) setDraggingOver(true)
+      }}
+      onDragOver={(e) => e.preventDefault()}
+      onDragLeave={() => {
+        dragCountRef.current--
+        if (dragCountRef.current === 0) setDraggingOver(false)
+      }}
+      onDrop={() => {
+        dragCountRef.current = 0
+        setDraggingOver(false)
+      }}
+    >
+      {draggingOver && (
+        <div className="drop-overlay">
+          <div className="drop-overlay-content">Drop image to insert</div>
+        </div>
+      )}
       <Toolbar editor={editor} headingLevel={headingLevel} />
       {findMode && (
         <FindReplace
@@ -503,6 +559,20 @@ function Toolbar({ editor, headingLevel }: {
           if (editor.isActive('table')) return
           editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
         }}
+      />
+
+      <span className="toolbar-separator" />
+
+      {/* Undo / Redo */}
+      <ToolbarButton
+        label="↩" title="Undo (Cmd+Z)"
+        onClick={() => editor.chain().focus().undo().run()}
+        className={editor.can().undo() ? '' : 'disabled'}
+      />
+      <ToolbarButton
+        label="↪" title="Redo (Cmd+Shift+Z)"
+        onClick={() => editor.chain().focus().redo().run()}
+        className={editor.can().redo() ? '' : 'disabled'}
       />
     </div>
   )
