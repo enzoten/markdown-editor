@@ -1,4 +1,5 @@
 import Editor from './Editor'
+import FeedbackWidget from './FeedbackWidget'
 import './app.css'
 
 export default function App() {
@@ -10,6 +11,7 @@ export default function App() {
       <main className="app-main">
         <Editor />
       </main>
+      <FeedbackWidget />
     </div>
   )
 }
