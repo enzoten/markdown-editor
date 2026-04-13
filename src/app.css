@@ -609,6 +609,99 @@ body {
   border-color: #fcc;
 }
 
+/* Table floating menu */
+.table-menu {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: 4px 6px;
+}
+
+.table-menu-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #555;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.table-menu-btn:hover {
+  background: #f0f0f0;
+  border-color: #ddd;
+}
+
+.table-menu-btn--danger:hover {
+  background: #fee;
+  color: #c00;
+  border-color: #fcc;
+}
+
+.table-menu-sep {
+  width: 1px;
+  height: 16px;
+  background: #ddd;
+  margin: 0 2px;
+}
+
+/* Image selection toolbar */
+.image-toolbar {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: 6px 8px;
+}
+
+.image-toolbar-label {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.image-toolbar-input {
+  padding: 3px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  width: 180px;
+  outline: none;
+}
+
+.image-toolbar-input:focus {
+  border-color: #1a73e8;
+}
+
+.image-toolbar-btn {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #555;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.image-toolbar-btn--danger:hover {
+  background: #fee;
+  color: #c00;
+  border-color: #fcc;
+}
+
 /* Code block with language selector */
 .code-block-wrapper {
   position: relative;
@@ -1182,5 +1275,59 @@ body {
 
   .find-close:hover {
     color: #ccc;
+  }
+
+  .table-menu,
+  .image-toolbar,
+  .link-bubble {
+    background: #2a2a2a;
+    border-color: #444;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .table-menu-btn {
+    color: #bbb;
+  }
+
+  .table-menu-btn:hover {
+    background: #3a3a3a;
+    border-color: #555;
+  }
+
+  .table-menu-sep {
+    background: #444;
+  }
+
+  .image-toolbar-input,
+  .link-bubble-input {
+    background: #333;
+    border-color: #444;
+    color: #ddd;
+  }
+
+  .image-toolbar-btn {
+    color: #bbb;
+    border-color: #444;
+  }
+
+  .link-bubble-btn {
+    color: #bbb;
+    border-color: #444;
+  }
+
+  .link-bubble-btn:hover {
+    background: #3a3a3a;
+  }
+
+  .link-bubble-url {
+    color: #6da6f0;
+  }
+
+  .status-filename {
+    color: #999;
+  }
+
+  .status-separator {
+    color: #555;
   }
 }

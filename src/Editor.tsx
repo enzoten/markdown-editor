@@ -20,6 +20,8 @@ import { openFile, saveFile, getFullMarkdown } from './fileOperations'
 import FindReplace from './FindReplace'
 import CodeBlockView from './CodeBlockView'
 import LinkBubble from './LinkBubble'
+import TableMenu from './TableMenu'
+import ImageToolbar from './ImageToolbar'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 
 const { frontMatter: initialFrontMatter, body: initialBody } = parseFrontMatter(sampleMarkdown)
@@ -38,6 +40,12 @@ export default function Editor() {
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null)
   const [fileName, setFileName] = useState<string>('Untitled')
   const [findMode, setFindMode] = useState<'find' | 'replace' | null>(null)
+  const [isDirty, setIsDirty] = useState(false)
+
+  const updateFrontMatter = useCallback((fm: FrontMatterData | null) => {
+    setFrontMatter(fm)
+    setIsDirty(true)
+  }, [])
 
   const editor = useEditor({
     extensions: [
@@ -78,12 +86,28 @@ export default function Editor() {
     enablePasteRules: false,
     onSelectionUpdate: forceUpdate,
     onTransaction: forceUpdate,
+    onUpdate: () => setIsDirty(true),
   })
 
   useEffect(() => { window._editor = editor }, [editor])
 
+  // Warn before closing with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) { e.preventDefault() }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
+
+  const confirmDiscard = useCallback(() => {
+    if (!isDirty) return true
+    return window.confirm('You have unsaved changes. Discard them?')
+  }, [isDirty])
+
   const handleOpen = useCallback(async () => {
     if (!editor) return
+    if (!confirmDiscard()) return
     const result = await openFile()
     if (!result) return
     const { frontMatter: fm, body } = parseFrontMatter(result.content)
@@ -91,22 +115,26 @@ export default function Editor() {
     editor.commands.setContent(body, { contentType: 'markdown' })
     setFileHandle(result.handle)
     setFileName(result.name)
-  }, [editor])
+    setIsDirty(false)
+  }, [editor, confirmDiscard])
 
   const handleSave = useCallback(async () => {
     if (!editor) return
     const content = await getFullMarkdown(editor, frontMatter)
     const handle = await saveFile(content, fileHandle)
     if (handle) setFileHandle(handle)
+    setIsDirty(false)
   }, [editor, frontMatter, fileHandle])
 
   const handleNew = useCallback(() => {
     if (!editor) return
+    if (!confirmDiscard()) return
     setFrontMatter(null)
     editor.commands.setContent('<p></p>')
     setFileHandle(null)
     setFileName('Untitled')
-  }, [editor])
+    setIsDirty(false)
+  }, [editor, confirmDiscard])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -233,12 +261,14 @@ export default function Editor() {
           onToggle={() => setOutlineVisible(v => !v)}
         />
         <div className="editor-main">
-          <FrontMatterPanel data={frontMatter} onChange={setFrontMatter} />
+          <FrontMatterPanel data={frontMatter} onChange={updateFrontMatter} />
           <EditorContent editor={editor} className="editor-content" />
           <LinkBubble editor={editor} />
+          <TableMenu editor={editor} />
+          <ImageToolbar editor={editor} />
         </div>
       </div>
-      <StatusBar editor={editor} fileName={fileName} />
+      <StatusBar editor={editor} fileName={fileName} isDirty={isDirty} />
     </div>
   )
 }
@@ -391,9 +421,10 @@ function ToolbarButton({ label, title, active, onClick, style, className }: {
   )
 }
 
-function StatusBar({ editor, fileName }: {
+function StatusBar({ editor, fileName, isDirty }: {
   editor: NonNullable<ReturnType<typeof useEditor>>
   fileName: string
+  isDirty: boolean
 }) {
   const { from, to } = editor.state.selection
   const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ')
@@ -408,7 +439,7 @@ function StatusBar({ editor, fileName }: {
 
   return (
     <div className="status-bar">
-      <span className="status-filename">{fileName}</span>
+      <span className="status-filename">{fileName}{isDirty ? ' ●' : ''}</span>
       <span className="status-separator">·</span>
       <span>{wordCount} words</span>
       {from !== to && <span> · {to - from} selected</span>}
