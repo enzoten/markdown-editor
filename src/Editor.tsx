@@ -453,7 +453,14 @@ export default function Editor() {
           <div className="drop-overlay-content">Drop image to insert</div>
         </div>
       )}
-      <Toolbar editor={editor} headingLevel={headingLevel} />
+      <Toolbar
+        editor={editor}
+        headingLevel={headingLevel}
+        undoFrontMatter={undoFrontMatter}
+        redoFrontMatter={redoFrontMatter}
+        fmUndoStack={fmUndoStack}
+        fmRedoStack={fmRedoStack}
+      />
       {findMode && (
         <FindReplace
           editor={editor}
@@ -480,10 +487,32 @@ export default function Editor() {
   )
 }
 
-function Toolbar({ editor, headingLevel }: {
+function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUndoStack, fmRedoStack }: {
   editor: NonNullable<ReturnType<typeof useEditor>>,
   headingLevel: string,
+  undoFrontMatter: () => boolean,
+  redoFrontMatter: () => boolean,
+  fmUndoStack: React.RefObject<(FrontMatterData | null)[]>,
+  fmRedoStack: React.RefObject<(FrontMatterData | null)[]>,
 }) {
+  const canUndo = editor.can().undo() || fmUndoStack.current.length > 0
+  const canRedo = editor.can().redo() || fmRedoStack.current.length > 0
+
+  const handleUndo = () => {
+    if (editor.can().undo()) {
+      editor.chain().focus().undo().run()
+    } else {
+      undoFrontMatter()
+    }
+  }
+
+  const handleRedo = () => {
+    if (editor.can().redo()) {
+      editor.chain().focus().redo().run()
+    } else {
+      redoFrontMatter()
+    }
+  }
   return (
     <div className="toolbar">
       {/* Block type selector */}
@@ -610,13 +639,13 @@ function Toolbar({ editor, headingLevel }: {
       {/* Undo / Redo */}
       <ToolbarButton
         label="↩" title="Undo (Cmd+Z)"
-        onClick={() => editor.chain().focus().undo().run()}
-        className={editor.can().undo() ? '' : 'disabled'}
+        onClick={handleUndo}
+        className={canUndo ? '' : 'disabled'}
       />
       <ToolbarButton
         label="↪" title="Redo (Cmd+Shift+Z)"
-        onClick={() => editor.chain().focus().redo().run()}
-        className={editor.can().redo() ? '' : 'disabled'}
+        onClick={handleRedo}
+        className={canRedo ? '' : 'disabled'}
       />
     </div>
   )
