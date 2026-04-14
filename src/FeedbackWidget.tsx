@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getGitHubToken, setGitHubToken, clearGitHubToken, syncTicketToGitHub, validateToken } from './githubSync'
 
 interface FeedbackTicket {
   id: string
@@ -7,6 +8,9 @@ interface FeedbackTicket {
   description: string
   createdAt: string
   synced: boolean
+  issueNumber?: number
+  issueUrl?: string
+  syncError?: string
 }
 
 const STORAGE_KEY = 'md-editor-feedback'
@@ -24,14 +28,21 @@ function saveTickets(tickets: FeedbackTicket[]) {
 
 export default function FeedbackWidget() {
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState<'form' | 'list'>('form')
+  const [view, setView] = useState<'form' | 'list' | 'settings'>('form')
   const [tickets, setTickets] = useState<FeedbackTicket[]>(loadTickets)
   const [toast, setToast] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState<Set<string>>(new Set())
 
   // Form state
   const [type, setType] = useState<'bug' | 'feature' | 'note'>('bug')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+
+  // Settings state
+  const [tokenInput, setTokenInput] = useState('')
+  const [hasToken, setHasToken] = useState(() => !!getGitHubToken())
+  const [tokenValidating, setTokenValidating] = useState(false)
+  const [tokenError, setTokenError] = useState<string | null>(null)
 
   const unsyncedCount = tickets.filter(t => !t.synced).length
 
@@ -40,11 +51,48 @@ export default function FeedbackWidget() {
   // Auto-dismiss toast
   useEffect(() => {
     if (!toast) return
-    const timer = setTimeout(() => setToast(null), 2000)
+    const timer = setTimeout(() => setToast(null), 3000)
     return () => clearTimeout(timer)
   }, [toast])
 
-  const handleSubmit = useCallback(() => {
+  const syncTicket = useCallback(async (ticket: FeedbackTicket) => {
+    if (!getGitHubToken()) {
+      setToast('Set up GitHub token in Settings first')
+      return
+    }
+
+    setSyncing(prev => new Set(prev).add(ticket.id))
+
+    const result = await syncTicketToGitHub({
+      type: ticket.type,
+      title: ticket.title,
+      description: ticket.description,
+    })
+
+    setSyncing(prev => {
+      const next = new Set(prev)
+      next.delete(ticket.id)
+      return next
+    })
+
+    if (result.success) {
+      setTickets(prev => prev.map(t =>
+        t.id === ticket.id
+          ? { ...t, synced: true, issueNumber: result.issueNumber, issueUrl: result.issueUrl, syncError: undefined }
+          : t
+      ))
+      setToast(`Synced as issue #${result.issueNumber}`)
+    } else {
+      setTickets(prev => prev.map(t =>
+        t.id === ticket.id
+          ? { ...t, syncError: result.error }
+          : t
+      ))
+      setToast(`Sync failed: ${result.error}`)
+    }
+  }, [])
+
+  const handleSubmit = useCallback(async () => {
     if (!title.trim()) return
     const ticket: FeedbackTicket = {
       id: `fb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -60,10 +108,52 @@ export default function FeedbackWidget() {
     setType('bug')
     setToast('Feedback saved!')
     setOpen(false)
-  }, [type, title, description])
+
+    // Auto-sync if token is configured
+    if (getGitHubToken()) {
+      // Small delay so the UI updates first
+      setTimeout(() => syncTicket(ticket), 100)
+    }
+  }, [type, title, description, syncTicket])
+
+  const handleSyncAll = useCallback(async () => {
+    const unsynced = tickets.filter(t => !t.synced)
+    for (const ticket of unsynced) {
+      await syncTicket(ticket)
+    }
+  }, [tickets, syncTicket])
 
   const handleDelete = useCallback((id: string) => {
     setTickets(prev => prev.filter(t => t.id !== id))
+  }, [])
+
+  const handleSaveToken = useCallback(async () => {
+    const trimmed = tokenInput.trim()
+    if (!trimmed) return
+
+    setTokenValidating(true)
+    setTokenError(null)
+
+    const valid = await validateToken(trimmed)
+
+    setTokenValidating(false)
+
+    if (valid) {
+      setGitHubToken(trimmed)
+      setHasToken(true)
+      setTokenInput('')
+      setToast('GitHub token saved')
+    } else {
+      setTokenError('Invalid token — could not authenticate with GitHub')
+    }
+  }, [tokenInput])
+
+  const handleRemoveToken = useCallback(() => {
+    clearGitHubToken()
+    setHasToken(false)
+    setTokenInput('')
+    setTokenError(null)
+    setToast('GitHub token removed')
   }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -98,12 +188,24 @@ export default function FeedbackWidget() {
               >
                 All ({tickets.length})
               </button>
+              <button
+                className={`fb-tab ${view === 'settings' ? 'fb-tab--active' : ''}`}
+                onClick={() => setView('settings')}
+                title="Settings"
+              >
+                Settings
+              </button>
             </div>
             <button className="fb-close" onClick={() => setOpen(false)}>&times;</button>
           </div>
 
           {view === 'form' ? (
             <div className="fb-form">
+              {!hasToken && (
+                <div className="fb-notice">
+                  Add a GitHub token in <button className="fb-notice-link" onClick={() => setView('settings')}>Settings</button> to sync feedback as issues.
+                </div>
+              )}
               <div className="fb-type-row">
                 {(['bug', 'feature', 'note'] as const).map(t => (
                   <button
@@ -134,16 +236,21 @@ export default function FeedbackWidget() {
                 onClick={handleSubmit}
                 disabled={!title.trim()}
               >
-                Submit
+                Submit{hasToken ? ' & Sync' : ''}
               </button>
             </div>
-          ) : (
+          ) : view === 'list' ? (
             <div className="fb-list">
+              {unsyncedCount > 0 && hasToken && (
+                <button className="fb-sync-all" onClick={handleSyncAll}>
+                  Sync {unsyncedCount} unsynced {unsyncedCount === 1 ? 'ticket' : 'tickets'}
+                </button>
+              )}
               {tickets.length === 0 ? (
                 <div className="fb-empty">No feedback yet</div>
               ) : (
                 tickets.map(t => (
-                  <div key={t.id} className="fb-ticket">
+                  <div key={t.id} className={`fb-ticket ${t.syncError ? 'fb-ticket--error' : ''}`}>
                     <div className="fb-ticket-header">
                       <span className={`fb-ticket-type fb-ticket-type--${t.type}`}>
                         {t.type === 'bug' ? '🐛' : t.type === 'feature' ? '✨' : '📝'}
@@ -155,11 +262,73 @@ export default function FeedbackWidget() {
                       <div className="fb-ticket-desc">{t.description}</div>
                     )}
                     <div className="fb-ticket-meta">
-                      {new Date(t.createdAt).toLocaleDateString()} · {t.synced ? 'Synced' : 'Pending'}
+                      {new Date(t.createdAt).toLocaleDateString()}
+                      {' · '}
+                      {syncing.has(t.id) ? (
+                        <span className="fb-ticket-syncing">Syncing...</span>
+                      ) : t.synced ? (
+                        <a
+                          className="fb-ticket-link"
+                          href={t.issueUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          #{t.issueNumber}
+                        </a>
+                      ) : (
+                        <>
+                          <span className="fb-ticket-pending">Pending</span>
+                          {hasToken && (
+                            <button
+                              className="fb-ticket-retry"
+                              onClick={() => syncTicket(t)}
+                            >
+                              Sync
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
+                    {t.syncError && (
+                      <div className="fb-ticket-error">{t.syncError}</div>
+                    )}
                   </div>
                 ))
               )}
+            </div>
+          ) : (
+            <div className="fb-settings">
+              <div className="fb-settings-section">
+                <div className="fb-settings-label">GitHub Token</div>
+                <p className="fb-settings-help">
+                  A personal access token with <code>repo</code> scope, used to create issues in the project repo.
+                </p>
+                {hasToken ? (
+                  <div className="fb-settings-token-active">
+                    <span className="fb-settings-token-status">Token configured</span>
+                    <button className="fb-settings-remove" onClick={handleRemoveToken}>Remove</button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      className="fb-input"
+                      type="password"
+                      placeholder="ghp_xxxxxxxxxxxx"
+                      value={tokenInput}
+                      onChange={e => { setTokenInput(e.target.value); setTokenError(null) }}
+                      autoFocus
+                    />
+                    {tokenError && <div className="fb-settings-error">{tokenError}</div>}
+                    <button
+                      className="fb-submit"
+                      onClick={handleSaveToken}
+                      disabled={!tokenInput.trim() || tokenValidating}
+                    >
+                      {tokenValidating ? 'Validating...' : 'Save Token'}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>

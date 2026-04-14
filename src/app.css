@@ -1356,6 +1356,150 @@ body {
   font-size: 11px;
   color: #aaa;
   margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fb-ticket-link {
+  color: #1a73e8;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.fb-ticket-link:hover {
+  text-decoration: underline;
+}
+
+.fb-ticket-pending {
+  color: #f59e0b;
+}
+
+.fb-ticket-syncing {
+  color: #1a73e8;
+  font-style: italic;
+}
+
+.fb-ticket-retry {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  color: #1a73e8;
+  padding: 1px 6px;
+  margin-left: 2px;
+}
+
+.fb-ticket-retry:hover {
+  background: #e8f0fe;
+}
+
+.fb-ticket-error {
+  font-size: 11px;
+  color: #e53935;
+  margin-top: 3px;
+}
+
+.fb-ticket--error {
+  border-color: #f5c6c6;
+}
+
+.fb-sync-all {
+  width: 100%;
+  background: #e8f0fe;
+  color: #1a73e8;
+  border: 1px solid #d2e3fc;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.fb-sync-all:hover {
+  background: #d2e3fc;
+}
+
+.fb-notice {
+  font-size: 12px;
+  color: #888;
+  background: #f5f5f5;
+  border-radius: 6px;
+  padding: 8px 10px;
+  line-height: 1.4;
+}
+
+.fb-notice-link {
+  background: none;
+  border: none;
+  color: #1a73e8;
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.fb-settings {
+  padding: 12px;
+}
+
+.fb-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fb-settings-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.fb-settings-help {
+  font-size: 12px;
+  color: #888;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.fb-settings-help code {
+  background: #f0f0f0;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.fb-settings-token-active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fb-settings-token-status {
+  font-size: 13px;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.fb-settings-remove {
+  background: none;
+  border: 1px solid #e53935;
+  border-radius: 4px;
+  color: #e53935;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+.fb-settings-remove:hover {
+  background: #fbe9e7;
+}
+
+.fb-settings-error {
+  font-size: 12px;
+  color: #e53935;
 }
 
 .fb-toast {
@@ -1826,5 +1970,82 @@ body {
 
   .fb-toast {
     background: #555;
+  }
+
+  .fb-ticket-link {
+    color: #6da6f0;
+  }
+
+  .fb-ticket-pending {
+    color: #fbbf24;
+  }
+
+  .fb-ticket-syncing {
+    color: #6da6f0;
+  }
+
+  .fb-ticket-retry {
+    border-color: #444;
+    color: #6da6f0;
+  }
+
+  .fb-ticket-retry:hover {
+    background: #1a2a3c;
+  }
+
+  .fb-ticket-error {
+    color: #ef5350;
+  }
+
+  .fb-ticket--error {
+    border-color: #5c2020;
+  }
+
+  .fb-sync-all {
+    background: #1a2a3c;
+    color: #6da6f0;
+    border-color: #2a3a4c;
+  }
+
+  .fb-sync-all:hover {
+    background: #2a3a4c;
+  }
+
+  .fb-notice {
+    background: #333;
+    color: #999;
+  }
+
+  .fb-notice-link {
+    color: #6da6f0;
+  }
+
+  .fb-settings-label {
+    color: #ddd;
+  }
+
+  .fb-settings-help {
+    color: #888;
+  }
+
+  .fb-settings-help code {
+    background: #333;
+  }
+
+  .fb-settings-token-status {
+    color: #66bb6a;
+  }
+
+  .fb-settings-remove {
+    border-color: #ef5350;
+    color: #ef5350;
+  }
+
+  .fb-settings-remove:hover {
+    background: #3c1a1a;
+  }
+
+  .fb-settings-error {
+    color: #ef5350;
   }
 }
