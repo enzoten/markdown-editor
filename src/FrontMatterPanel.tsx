@@ -8,7 +8,7 @@ export default function FrontMatterPanel({
   data: FrontMatterData | null
   onChange: (data: FrontMatterData | null) => void
 }) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
 
   if (!data) {
     return (
