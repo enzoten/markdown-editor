@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeMarkdown } from '../normalizeMarkdown'
+import { normalizeMarkdown } from '@/lib/normalizeMarkdown'
 
 describe('normalizeMarkdown', () => {
   it('normalizes headings to ATX style', async () => {

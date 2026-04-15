@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import FrontMatterPanel from '../FrontMatterPanel'
+import FrontMatterPanel from '@/components/FrontMatterPanel'
 
 describe('FrontMatterPanel', () => {
   it('shows "Add Front Matter" when data is null', () => {
