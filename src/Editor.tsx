@@ -48,7 +48,11 @@ declare global {
 
 export default function Editor() {
   const [, setTick] = useState(0)
-  const forceUpdate = useCallback(() => setTick(t => t + 1), [])
+  const rafRef = useRef(0)
+  const forceUpdate = useCallback(() => {
+    cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(() => setTick(t => t + 1))
+  }, [])
   const [outlineVisible, setOutlineVisible] = useState(true)
   const [frontMatter, setFrontMatter] = useState<FrontMatterData | null>(initialFrontMatter)
   const fmUndoStack = useRef<(FrontMatterData | null)[]>([])
@@ -514,7 +518,7 @@ function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUnd
     }
   }
   return (
-    <div className="toolbar">
+    <div className="toolbar" role="toolbar" aria-label="Formatting toolbar">
       {/* Block type selector */}
       <select
         value={headingLevel}
@@ -527,6 +531,7 @@ function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUnd
           }
         }}
         title="Block type"
+        aria-label="Block type"
       >
         <option value="0">Paragraph</option>
         <option value="1">Heading 1</option>
@@ -665,6 +670,8 @@ function ToolbarButton({ label, title, active, onClick, style, className }: {
       className={[className, active ? 'active' : ''].filter(Boolean).join(' ')}
       title={title}
       style={style}
+      aria-pressed={active}
+      aria-label={title}
     >
       {label}
     </button>
@@ -677,8 +684,16 @@ function StatusBar({ editor, fileName, isDirty }: {
   isDirty: boolean
 }) {
   const { from, to } = editor.state.selection
-  const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ')
-  const wordCount = text.trim().split(/\s+/).filter(Boolean).length
+  const [wordCount, setWordCount] = useState(0)
+
+  // Debounce word count to avoid expensive full-doc traversal on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ')
+      setWordCount(text.trim().split(/\s+/).filter(Boolean).length)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [editor.state.doc])
 
   const activeMarks: string[] = []
   if (editor.isActive('bold')) activeMarks.push('Bold')
@@ -688,7 +703,7 @@ function StatusBar({ editor, fileName, isDirty }: {
   if (editor.isActive('link')) activeMarks.push('Link')
 
   return (
-    <div className="status-bar">
+    <div className="status-bar" role="status" aria-live="polite">
       <span className="status-filename">{fileName}{isDirty ? ' ●' : ''}</span>
       <span className="status-separator">·</span>
       <span>{wordCount} words</span>
