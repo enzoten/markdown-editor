@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import type { FrontMatterData } from './frontmatter'
+import type { FrontMatterData } from '@/lib/frontmatter'
 
 export default function FrontMatterPanel({
   data,

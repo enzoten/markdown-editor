@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseFrontMatter, serializeFrontMatter } from '../frontmatter'
+import { parseFrontMatter, serializeFrontMatter } from '@/lib/frontmatter'
 
 describe('parseFrontMatter', () => {
   it('parses valid YAML front matter', () => {

@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { StarterKit } from '@tiptap/starter-kit'
@@ -12,33 +14,17 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
-import { sampleMarkdown } from './sampleContent'
-import { parseFrontMatter, type FrontMatterData } from './frontmatter'
-import OutlineSidebar from './OutlineSidebar'
-import FrontMatterPanel from './FrontMatterPanel'
-import { openFile, saveFile, getFullMarkdown } from './fileOperations'
-import FindReplace from './FindReplace'
-import CodeBlockView from './CodeBlockView'
-import LinkBubble from './LinkBubble'
-import TableMenu from './TableMenu'
-import ImageToolbar from './ImageToolbar'
+import { sampleMarkdown } from '@/lib/sampleContent'
+import { parseFrontMatter, type FrontMatterData } from '@/lib/frontmatter'
+import OutlineSidebar from '@/components/OutlineSidebar'
+import FrontMatterPanel from '@/components/FrontMatterPanel'
+import { openFile, saveFile, getFullMarkdown } from '@/lib/fileOperations'
+import FindReplace from '@/components/FindReplace'
+import CodeBlockView from '@/components/CodeBlockView'
+import LinkBubble from '@/components/LinkBubble'
+import TableMenu from '@/components/TableMenu'
+import ImageToolbar from '@/components/ImageToolbar'
 import { ReactNodeViewRenderer } from '@tiptap/react'
-
-function getInitialContent() {
-  try {
-    const saved = localStorage.getItem('md-editor-draft')
-    if (saved) {
-      const draft = JSON.parse(saved)
-      // Only restore drafts less than 24 hours old
-      if (draft.savedAt && Date.now() - draft.savedAt < 86400000) {
-        return { frontMatter: draft.frontMatter as FrontMatterData | null, body: draft.body as string }
-      }
-    }
-  } catch { /* ignore corrupt data */ }
-  return parseFrontMatter(sampleMarkdown)
-}
-
-const { frontMatter: initialFrontMatter, body: initialBody } = getInitialContent()
 
 const lowlight = createLowlight(common)
 
@@ -46,7 +32,7 @@ declare global {
   interface Window { _editor: ReturnType<typeof useEditor> }
 }
 
-export default function Editor() {
+export default function Editor({ documentId }: { documentId?: string | null }) {
   const [, setTick] = useState(0)
   const rafRef = useRef(0)
   const forceUpdate = useCallback(() => {
@@ -54,7 +40,7 @@ export default function Editor() {
     rafRef.current = requestAnimationFrame(() => setTick(t => t + 1))
   }, [])
   const [outlineVisible, setOutlineVisible] = useState(true)
-  const [frontMatter, setFrontMatter] = useState<FrontMatterData | null>(initialFrontMatter)
+  const [frontMatter, setFrontMatter] = useState<FrontMatterData | null>(null)
   const fmUndoStack = useRef<(FrontMatterData | null)[]>([])
   const fmRedoStack = useRef<(FrontMatterData | null)[]>([])
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null)
@@ -63,6 +49,7 @@ export default function Editor() {
   const [isDirty, setIsDirty] = useState(false)
   const [draggingOver, setDraggingOver] = useState(false)
   const dragCountRef = useRef(0)
+  const [cloudLoaded, setCloudLoaded] = useState(false)
 
   const updateFrontMatter = useCallback((fm: FrontMatterData | null) => {
     fmUndoStack.current.push(frontMatter)
@@ -156,7 +143,7 @@ export default function Editor() {
         },
       }),
     ],
-    content: initialBody,
+    content: '',
     contentType: 'markdown',
     enableInputRules: false,
     enablePasteRules: false,
@@ -229,6 +216,37 @@ export default function Editor() {
 
   useEffect(() => { window._editor = editor }, [editor])
 
+  // Load document from cloud API
+  useEffect(() => {
+    if (!editor || !documentId || cloudLoaded) return
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/documents/${documentId}`)
+        if (res.ok) {
+          const doc = await res.json()
+          const { frontMatter: fm, body } = parseFrontMatter(doc.content)
+          setFrontMatter(fm)
+          setFileName(doc.title || 'Untitled')
+          editor.commands.setContent(body || '<p></p>', { contentType: 'markdown' })
+          fmUndoStack.current = []
+          fmRedoStack.current = []
+          setIsDirty(false)
+        }
+      } catch { /* network error — keep empty doc */ }
+      setCloudLoaded(true)
+    }
+    load()
+  }, [editor, documentId, cloudLoaded])
+
+  // Load sample content when no document is selected
+  useEffect(() => {
+    if (!editor || documentId || cloudLoaded) return
+    const { frontMatter: fm, body } = parseFrontMatter(sampleMarkdown)
+    setFrontMatter(fm)
+    editor.commands.setContent(body, { contentType: 'markdown' })
+    setCloudLoaded(true)
+  }, [editor, documentId, cloudLoaded])
+
   // Warn before closing with unsaved changes
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -238,21 +256,35 @@ export default function Editor() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
 
-  // Auto-save draft to localStorage every 5 seconds when dirty
+  // Auto-save to cloud API every 5 seconds when dirty
   useEffect(() => {
     if (!editor || !isDirty) return
-    const timer = setTimeout(() => {
-      try {
-        const body = editor.getMarkdown()
-        localStorage.setItem('md-editor-draft', JSON.stringify({
-          body,
-          frontMatter,
-          savedAt: Date.now(),
-        }))
-      } catch { /* quota exceeded — silently ignore */ }
+    const timer = setTimeout(async () => {
+      if (documentId) {
+        try {
+          const content = await getFullMarkdown(editor, frontMatter)
+          const title = frontMatter?.title as string || fileName
+          await fetch(`/api/documents/${documentId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, content }),
+          })
+          setIsDirty(false)
+        } catch { /* network error — will retry on next change */ }
+      } else {
+        // Fallback: save to localStorage for unsigned-in/local use
+        try {
+          const body = editor.getMarkdown()
+          localStorage.setItem('md-editor-draft', JSON.stringify({
+            body,
+            frontMatter,
+            savedAt: Date.now(),
+          }))
+        } catch { /* quota exceeded */ }
+      }
     }, 5000)
     return () => clearTimeout(timer)
-  }, [editor, isDirty, frontMatter])
+  }, [editor, isDirty, frontMatter, documentId, fileName])
 
   // Handle Markdown paste events from the editorProps handler
   useEffect(() => {
@@ -291,11 +323,25 @@ export default function Editor() {
   const handleSave = useCallback(async () => {
     if (!editor) return
     const content = await getFullMarkdown(editor, frontMatter)
-    const handle = await saveFile(content, fileHandle)
-    if (handle) setFileHandle(handle)
-    setIsDirty(false)
-    localStorage.removeItem('md-editor-draft')
-  }, [editor, frontMatter, fileHandle])
+    if (documentId) {
+      // Cloud save
+      try {
+        const title = frontMatter?.title as string || fileName
+        await fetch(`/api/documents/${documentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content }),
+        })
+        setIsDirty(false)
+      } catch { /* network error */ }
+    } else {
+      // Local file save
+      const handle = await saveFile(content, fileHandle)
+      if (handle) setFileHandle(handle)
+      setIsDirty(false)
+      localStorage.removeItem('md-editor-draft')
+    }
+  }, [editor, frontMatter, fileHandle, documentId, fileName])
 
   const handleNew = useCallback(() => {
     if (!editor) return
