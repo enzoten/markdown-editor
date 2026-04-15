@@ -39,12 +39,16 @@ export default function OutlineSidebar({
     setHeadings(items)
   }, [editor])
 
-  // Extract headings on mount and on every document change
+  // Extract headings on mount and on document changes (debounced)
   useEffect(() => {
     extractHeadings()
-    const handler = () => extractHeadings()
+    let timer: ReturnType<typeof setTimeout>
+    const handler = () => {
+      clearTimeout(timer)
+      timer = setTimeout(extractHeadings, 150)
+    }
     editor.on('update', handler)
-    return () => { editor.off('update', handler) }
+    return () => { clearTimeout(timer); editor.off('update', handler) }
   }, [editor, extractHeadings])
 
   // Set up IntersectionObserver for scroll-based active heading tracking
@@ -135,7 +139,7 @@ export default function OutlineSidebar({
 
   if (!visible) {
     return (
-      <button className="outline-toggle outline-toggle--collapsed" onClick={onToggle} title="Show outline (Cmd+Shift+O)">
+      <button className="outline-toggle outline-toggle--collapsed" onClick={onToggle} title="Show outline (Cmd+Shift+O)" aria-label="Show document outline" aria-expanded={false}>
         <span className="outline-toggle-icon">&#9776;</span>
       </button>
     )
@@ -145,10 +149,10 @@ export default function OutlineSidebar({
   const minLevel = headings.length > 0 ? Math.min(...headings.map(h => h.level)) : 1
 
   return (
-    <aside className="outline-sidebar">
+    <aside className="outline-sidebar" aria-label="Document outline">
       <div className="outline-header">
         <span className="outline-title">Outline</span>
-        <button className="outline-toggle" onClick={onToggle} title="Hide outline (Cmd+Shift+O)">
+        <button className="outline-toggle" onClick={onToggle} title="Hide outline (Cmd+Shift+O)" aria-label="Hide document outline" aria-expanded={true}>
           &times;
         </button>
       </div>
@@ -163,6 +167,7 @@ export default function OutlineSidebar({
               style={{ paddingLeft: `${(h.level - minLevel) * 16 + 12}px` }}
               onClick={() => handleClick(h)}
               title={h.text}
+              aria-current={activeId === h.id ? 'location' : undefined}
             >
               <span className="outline-item-text">{h.text}</span>
             </button>

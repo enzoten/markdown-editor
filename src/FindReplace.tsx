@@ -130,7 +130,7 @@ export default function FindReplace({
   }
 
   return (
-    <div className="find-replace" onKeyDown={handleKeyDown}>
+    <div className="find-replace" onKeyDown={handleKeyDown} role="search" aria-label="Find and replace">
       <div className="find-row">
         <input
           ref={inputRef}
@@ -138,6 +138,7 @@ export default function FindReplace({
           placeholder="Find..."
           value={query}
           onChange={(e) => { setQuery(e.target.value); setCurrentIndex(0) }}
+          aria-label="Search text"
         />
         <span className="find-count">
           {query ? `${matches.length > 0 ? currentIndex + 1 : 0} of ${matches.length}` : ''}
@@ -157,6 +158,7 @@ export default function FindReplace({
             placeholder="Replace..."
             value={replacement}
             onChange={(e) => setReplacement(e.target.value)}
+            aria-label="Replacement text"
           />
           <button className="find-btn find-btn--action" onClick={replaceCurrent} disabled={matches.length === 0}>Replace</button>
           <button className="find-btn find-btn--action" onClick={replaceAll} disabled={matches.length === 0}>All</button>

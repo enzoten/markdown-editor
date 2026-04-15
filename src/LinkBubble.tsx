@@ -72,6 +72,8 @@ export default function LinkBubble({ editor }: { editor: Editor }) {
     <div
       ref={bubbleRef}
       className="link-bubble"
+      role="dialog"
+      aria-label="Edit link"
       style={{ top: position.top, left: position.left }}
     >
       {editing ? (
@@ -83,6 +85,7 @@ export default function LinkBubble({ editor }: { editor: Editor }) {
             onKeyDown={handleKeyDown}
             placeholder="https://..."
             autoFocus
+            aria-label="Link URL"
           />
           <button className="link-bubble-btn link-bubble-save" onClick={handleSave}>Save</button>
           <button className="link-bubble-btn" onClick={() => setEditing(false)}>Cancel</button>

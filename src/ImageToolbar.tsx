@@ -38,7 +38,7 @@ export default function ImageToolbar({ editor }: { editor: Editor }) {
   }
 
   return (
-    <div className="image-toolbar" style={{ top: position.top, left: position.left }}>
+    <div className="image-toolbar" style={{ top: position.top, left: position.left }} role="toolbar" aria-label="Image actions">
       <label className="image-toolbar-label">Alt text:</label>
       <input
         className="image-toolbar-input"

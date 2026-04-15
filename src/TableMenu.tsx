@@ -34,7 +34,7 @@ export default function TableMenu({ editor }: { editor: Editor }) {
   if (!visible) return null
 
   return (
-    <div className="table-menu" style={{ top: position.top, left: position.left }}>
+    <div className="table-menu" style={{ top: position.top, left: position.left }} role="toolbar" aria-label="Table actions">
       <button
         className="table-menu-btn"
         onClick={() => editor.chain().focus().addRowBefore().run()}

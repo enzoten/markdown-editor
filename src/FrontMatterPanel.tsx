@@ -29,6 +29,8 @@ export default function FrontMatterPanel({
         <button
           className="frontmatter-toggle"
           onClick={() => setCollapsed(false)}
+          aria-expanded={false}
+          aria-label="Expand front matter"
         >
           <span className="frontmatter-chevron">&#9654;</span>
           Front Matter
@@ -67,6 +69,8 @@ export default function FrontMatterPanel({
         <button
           className="frontmatter-toggle"
           onClick={() => setCollapsed(true)}
+          aria-expanded={true}
+          aria-label="Collapse front matter"
         >
           <span className="frontmatter-chevron">&#9660;</span>
           Front Matter
