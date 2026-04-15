@@ -3,7 +3,12 @@ import AppShell from '@/components/AppShell'
 import LandingPage from '@/components/LandingPage'
 
 export default async function Home() {
-  const session = await auth()
+  let session = null
+  try {
+    session = await auth()
+  } catch {
+    // Auth may fail if DB is unavailable — show landing page
+  }
 
   if (!session?.user) {
     return <LandingPage />
