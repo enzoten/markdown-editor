@@ -13,7 +13,12 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth()
+  let session = null
+  try {
+    session = await auth()
+  } catch {
+    // Auth may fail if DB is unavailable
+  }
 
   return (
     <html lang="en">
