@@ -1,21 +1,32 @@
-import { unified } from 'unified'
-import remarkParse from 'remark-parse'
-import remarkGfm from 'remark-gfm'
-import remarkStringify from 'remark-stringify'
+let normalizer: Awaited<ReturnType<typeof createNormalizer>> | null = null
 
-const normalizer = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  .use(remarkStringify, {
-    bullet: '-',
-    emphasis: '*',
-    strong: '**',
-    listItemIndent: 'one',
-    rule: '-',
-    fences: true,
-    incrementListMarker: true,
-  } as any)
+async function createNormalizer() {
+  const { unified } = await import('unified')
+  const remarkParse = (await import('remark-parse')).default
+  const remarkGfm = (await import('remark-gfm')).default
+  const remarkStringify = (await import('remark-stringify')).default
+
+  return unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkStringify, {
+      bullet: '-',
+      emphasis: '*',
+      strong: '**',
+      listItemIndent: 'one',
+      rule: '-',
+      fences: true,
+      incrementListMarker: true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+}
+
+async function getNormalizer() {
+  if (!normalizer) {
+    normalizer = await createNormalizer()
+  }
+  return normalizer
+}
 
 /**
  * Normalize Markdown output for pristine formatting:
@@ -24,10 +35,13 @@ const normalizer = unified()
  * - Clean table formatting
  * - No trailing whitespace
  * - LF line endings
+ *
+ * Remark is lazy-loaded on first call to avoid blocking initial page load.
  */
 export async function normalizeMarkdown(raw: string): Promise<string> {
   try {
-    const result = await normalizer.process(raw)
+    const proc = await getNormalizer()
+    const result = await proc.process(raw)
     let output = String(result)
     // Ensure LF line endings
     output = output.replace(/\r\n/g, '\n')

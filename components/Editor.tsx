@@ -566,8 +566,33 @@ function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUnd
       redoFrontMatter()
     }
   }
+
+  const handleToolbarKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const toolbar = e.currentTarget
+    const buttons = Array.from(toolbar.querySelectorAll<HTMLElement>('button, select'))
+    const current = document.activeElement as HTMLElement
+    const idx = buttons.indexOf(current)
+    if (idx === -1) return
+
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      const next = buttons[(idx + 1) % buttons.length]
+      next?.focus()
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      const prev = buttons[(idx - 1 + buttons.length) % buttons.length]
+      prev?.focus()
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      buttons[0]?.focus()
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      buttons[buttons.length - 1]?.focus()
+    }
+  }
+
   return (
-    <div className="toolbar" role="toolbar" aria-label="Formatting toolbar">
+    <div className="toolbar" role="toolbar" aria-label="Formatting toolbar" onKeyDown={handleToolbarKeyDown}>
       {/* Block type selector */}
       <select
         value={headingLevel}
@@ -581,6 +606,7 @@ function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUnd
         }}
         title="Block type"
         aria-label="Block type"
+        tabIndex={0}
       >
         <option value="0">Paragraph</option>
         <option value="1">Heading 1</option>
@@ -705,13 +731,14 @@ function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUnd
   )
 }
 
-function ToolbarButton({ label, title, active, onClick, style, className }: {
+function ToolbarButton({ label, title, active, onClick, style, className, tabIndex }: {
   label: string
   title: string
   active?: boolean
   onClick: () => void
   style?: React.CSSProperties
   className?: string
+  tabIndex?: number
 }) {
   return (
     <button
@@ -721,6 +748,7 @@ function ToolbarButton({ label, title, active, onClick, style, className }: {
       style={style}
       aria-pressed={active}
       aria-label={title}
+      tabIndex={tabIndex ?? -1}
     >
       {label}
     </button>
