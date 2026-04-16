@@ -25,6 +25,7 @@ import LinkBubble from '@/components/LinkBubble'
 import TableMenu from '@/components/TableMenu'
 import ImageToolbar from '@/components/ImageToolbar'
 import CommentSidebar from '@/components/CommentSidebar'
+import CommentPopover from '@/components/CommentPopover'
 import { CommentMark } from '@/lib/commentMark'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 
@@ -53,6 +54,7 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
   const dragCountRef = useRef(0)
   const [cloudLoaded, setCloudLoaded] = useState(false)
   const [commentsVisible, setCommentsVisible] = useState(false)
+  const [addingComment, setAddingComment] = useState(false)
 
   const updateFrontMatter = useCallback((fm: FrontMatterData | null) => {
     fmUndoStack.current.push(frontMatter)
@@ -218,6 +220,16 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
   })
 
   useEffect(() => { window._editor = editor }, [editor])
+
+  const startComment = useCallback(() => {
+    const { from, to } = editor?.state.selection || { from: 0, to: 0 }
+    if (from === to) {
+      setCommentsVisible(v => !v)
+      return
+    }
+    setCommentsVisible(true)
+    setAddingComment(true)
+  }, [editor])
 
   // Load document from cloud API
   useEffect(() => {
@@ -521,7 +533,7 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
         fmUndoStack={fmUndoStack}
         fmRedoStack={fmRedoStack}
         documentId={documentId}
-        onToggleComments={() => setCommentsVisible(v => !v)}
+        onComment={startComment}
       />
       {findMode && (
         <FindReplace
@@ -542,6 +554,12 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
           <LinkBubble editor={editor} />
           <TableMenu editor={editor} />
           <ImageToolbar editor={editor} />
+          {documentId && (
+            <CommentPopover
+              editor={editor}
+              onStartComment={startComment}
+            />
+          )}
         </div>
         {documentId && (
           <CommentSidebar
@@ -549,6 +567,8 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
             documentId={documentId}
             visible={commentsVisible}
             onToggle={() => setCommentsVisible(v => !v)}
+            addingComment={addingComment}
+            onCancelAdd={() => setAddingComment(false)}
           />
         )}
       </div>
@@ -557,7 +577,7 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
   )
 }
 
-function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUndoStack, fmRedoStack, documentId, onToggleComments }: {
+function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUndoStack, fmRedoStack, documentId, onComment }: {
   editor: NonNullable<ReturnType<typeof useEditor>>,
   headingLevel: string,
   undoFrontMatter: () => boolean,
@@ -565,7 +585,7 @@ function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUnd
   fmUndoStack: React.RefObject<(FrontMatterData | null)[]>,
   fmRedoStack: React.RefObject<(FrontMatterData | null)[]>,
   documentId?: string | null,
-  onToggleComments: () => void,
+  onComment: () => void,
 }) {
   const canUndo = editor.can().undo() || fmUndoStack.current.length > 0
   const canRedo = editor.can().redo() || fmRedoStack.current.length > 0
@@ -752,25 +772,7 @@ function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUnd
           <span className="toolbar-separator" />
           <ToolbarButton
             label="💬" title="Add Comment"
-            onClick={async () => {
-              const { from, to } = editor.state.selection
-              if (from === to) {
-                onToggleComments()
-                return
-              }
-              const commentText = window.prompt('Add a comment:')
-              if (!commentText?.trim()) return
-              const res = await fetch(`/api/documents/${documentId}/comments`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: commentText.trim() }),
-              })
-              if (res.ok) {
-                const comment = await res.json()
-                editor.chain().focus().setComment(comment.id).run()
-                onToggleComments()
-              }
-            }}
+            onClick={onComment}
           />
         </>
       )}
