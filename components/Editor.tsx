@@ -143,8 +143,7 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
         },
       }),
     ],
-    content: '',
-    contentType: 'markdown',
+    content: '<p></p>',
     enableInputRules: false,
     enablePasteRules: false,
     editorProps: {
@@ -227,7 +226,11 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
           const { frontMatter: fm, body } = parseFrontMatter(doc.content)
           setFrontMatter(fm)
           setFileName(doc.title || 'Untitled')
-          editor.commands.setContent(body || '<p></p>', { contentType: 'markdown' })
+          if (body) {
+            editor.commands.setContent(body, { contentType: 'markdown' })
+          } else {
+            editor.commands.setContent('<p></p>')
+          }
           fmUndoStack.current = []
           fmRedoStack.current = []
           setIsDirty(false)
