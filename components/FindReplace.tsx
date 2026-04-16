@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
+import { ChevronUp, ChevronDown, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export default function FindReplace({
   editor,
@@ -19,37 +21,26 @@ export default function FindReplace({
   const [currentIndex, setCurrentIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Focus the search input on mount
   useEffect(() => { inputRef.current?.focus() }, [])
 
-  // Find all matches in the document
   const findMatches = useCallback(() => {
     if (!query) { setMatches([]); return }
-
     const doc = editor.state.doc
     const text = doc.textBetween(0, doc.content.size, '\n')
     const searchText = caseSensitive ? query : query.toLowerCase()
     const docText = caseSensitive ? text : text.toLowerCase()
-
     const results: { from: number; to: number }[] = []
     let pos = 0
     let searchFrom = 0
-
-    // Map text positions to doc positions
-    // We need to walk the document to map text offsets to ProseMirror positions
     const textToPos: number[] = []
     doc.descendants((node, nodePos) => {
       if (node.isText) {
-        for (let i = 0; i < node.text!.length; i++) {
-          textToPos.push(nodePos + i)
-        }
+        for (let i = 0; i < node.text!.length; i++) textToPos.push(nodePos + i)
       } else if (node.isBlock && textToPos.length > 0) {
-        textToPos.push(-1) // newline placeholder
+        textToPos.push(-1)
       }
     })
-
     while ((pos = docText.indexOf(searchText, searchFrom)) !== -1) {
-      // Map text offset to doc positions
       const fromDocPos = textToPos[pos]
       const toDocPos = textToPos[pos + searchText.length - 1]
       if (fromDocPos !== undefined && toDocPos !== undefined && fromDocPos >= 0 && toDocPos >= 0) {
@@ -57,113 +48,86 @@ export default function FindReplace({
       }
       searchFrom = pos + 1
     }
-
     setMatches(results)
-    if (results.length > 0 && currentIndex >= results.length) {
-      setCurrentIndex(0)
-    }
+    if (results.length > 0 && currentIndex >= results.length) setCurrentIndex(0)
   }, [query, caseSensitive, editor, currentIndex])
 
   useEffect(() => { findMatches() }, [findMatches])
 
-  // Navigate to current match
   useEffect(() => {
     if (matches.length === 0) return
     const match = matches[currentIndex]
     if (!match) return
-
-    editor.chain()
-      .setTextSelection({ from: match.from, to: match.to })
-      .scrollIntoView()
-      .run()
+    editor.chain().setTextSelection({ from: match.from, to: match.to }).scrollIntoView().run()
   }, [currentIndex, matches, editor])
 
-  const goNext = () => {
-    if (matches.length === 0) return
-    setCurrentIndex((currentIndex + 1) % matches.length)
-  }
-
-  const goPrev = () => {
-    if (matches.length === 0) return
-    setCurrentIndex((currentIndex - 1 + matches.length) % matches.length)
-  }
+  const goNext = () => { if (matches.length > 0) setCurrentIndex((currentIndex + 1) % matches.length) }
+  const goPrev = () => { if (matches.length > 0) setCurrentIndex((currentIndex - 1 + matches.length) % matches.length) }
 
   const replaceCurrent = () => {
     if (matches.length === 0) return
     const match = matches[currentIndex]
     if (!match) return
-
-    editor.chain()
-      .focus()
-      .setTextSelection({ from: match.from, to: match.to })
-      .insertContent(replacement)
-      .run()
-
-    // Re-find after replace
+    editor.chain().focus().setTextSelection({ from: match.from, to: match.to }).insertContent(replacement).run()
     setTimeout(findMatches, 10)
   }
 
   const replaceAll = () => {
     if (matches.length === 0) return
-
-    // Replace from end to start to preserve positions
     const sorted = [...matches].sort((a, b) => b.from - a.from)
     let chain = editor.chain()
     for (const match of sorted) {
-      chain = chain
-        .setTextSelection({ from: match.from, to: match.to })
-        .insertContent(replacement)
+      chain = chain.setTextSelection({ from: match.from, to: match.to }).insertContent(replacement)
     }
     chain.run()
-
     setTimeout(findMatches, 10)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onClose()
-    } else if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      goNext()
-    } else if (e.key === 'Enter' && e.shiftKey) {
-      e.preventDefault()
-      goPrev()
-    }
+    if (e.key === 'Escape') onClose()
+    else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); goNext() }
+    else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); goPrev() }
   }
 
   return (
-    <div className="find-replace" onKeyDown={handleKeyDown} role="search" aria-label="Find and replace">
-      <div className="find-row">
+    <div className="border-b border-border bg-muted/30 px-3 py-1.5 flex flex-col gap-1" onKeyDown={handleKeyDown} role="search" aria-label="Find and replace">
+      <div className="flex items-center gap-1.5">
         <input
           ref={inputRef}
-          className="find-input"
+          className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:border-ring focus:ring-1 focus:ring-ring"
           placeholder="Find..."
           value={query}
           onChange={(e) => { setQuery(e.target.value); setCurrentIndex(0) }}
           aria-label="Search text"
         />
-        <span className="find-count">
+        <span className="text-[10px] text-muted-foreground min-w-[60px] text-center">
           {query ? `${matches.length > 0 ? currentIndex + 1 : 0} of ${matches.length}` : ''}
         </span>
-        <button className="find-btn" onClick={goPrev} title="Previous (Shift+Enter)" disabled={matches.length === 0}>&#9650;</button>
-        <button className="find-btn" onClick={goNext} title="Next (Enter)" disabled={matches.length === 0}>&#9660;</button>
-        <label className="find-case" title="Case sensitive">
-          <input type="checkbox" checked={caseSensitive} onChange={(e) => setCaseSensitive(e.target.checked)} />
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={goPrev} disabled={matches.length === 0} title="Previous (Shift+Enter)">
+          <ChevronUp className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={goNext} disabled={matches.length === 0} title="Next (Enter)">
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
+        <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer px-1" title="Case sensitive">
+          <input type="checkbox" checked={caseSensitive} onChange={(e) => setCaseSensitive(e.target.checked)} className="rounded" />
           Aa
         </label>
-        <button className="find-close" onClick={onClose}>&times;</button>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+          <X className="h-3.5 w-3.5" />
+        </Button>
       </div>
       {mode === 'replace' && (
-        <div className="find-row">
+        <div className="flex items-center gap-1.5">
           <input
-            className="find-input"
+            className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             placeholder="Replace..."
             value={replacement}
             onChange={(e) => setReplacement(e.target.value)}
             aria-label="Replacement text"
           />
-          <button className="find-btn find-btn--action" onClick={replaceCurrent} disabled={matches.length === 0}>Replace</button>
-          <button className="find-btn find-btn--action" onClick={replaceAll} disabled={matches.length === 0}>All</button>
+          <Button variant="outline" size="sm" className="h-6 px-2 text-[10px]" onClick={replaceCurrent} disabled={matches.length === 0}>Replace</Button>
+          <Button variant="outline" size="sm" className="h-6 px-2 text-[10px]" onClick={replaceAll} disabled={matches.length === 0}>All</Button>
         </div>
       )}
     </div>
