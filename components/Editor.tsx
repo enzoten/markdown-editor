@@ -234,6 +234,8 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
           fmUndoStack.current = []
           fmRedoStack.current = []
           setIsDirty(false)
+          // Focus the editor so the user can start typing immediately
+          setTimeout(() => editor.commands.focus('end'), 50)
         }
       } catch { /* network error — keep empty doc */ }
       setCloudLoaded(true)
@@ -248,6 +250,7 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
     setFrontMatter(fm)
     editor.commands.setContent(body, { contentType: 'markdown' })
     setCloudLoaded(true)
+    setTimeout(() => editor.commands.focus('end'), 50)
   }, [editor, documentId, cloudLoaded])
 
   // Warn before closing with unsaved changes
