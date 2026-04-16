@@ -24,6 +24,8 @@ import CodeBlockView from '@/components/CodeBlockView'
 import LinkBubble from '@/components/LinkBubble'
 import TableMenu from '@/components/TableMenu'
 import ImageToolbar from '@/components/ImageToolbar'
+import CommentSidebar from '@/components/CommentSidebar'
+import { CommentMark } from '@/lib/commentMark'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 
 const lowlight = createLowlight(common)
@@ -50,6 +52,7 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
   const [draggingOver, setDraggingOver] = useState(false)
   const dragCountRef = useRef(0)
   const [cloudLoaded, setCloudLoaded] = useState(false)
+  const [commentsVisible, setCommentsVisible] = useState(false)
 
   const updateFrontMatter = useCallback((fm: FrontMatterData | null) => {
     fmUndoStack.current.push(frontMatter)
@@ -142,6 +145,7 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
           pedantic: false,
         },
       }),
+      CommentMark,
     ],
     content: '<p></p>',
     enableInputRules: false,
@@ -516,6 +520,8 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
         redoFrontMatter={redoFrontMatter}
         fmUndoStack={fmUndoStack}
         fmRedoStack={fmRedoStack}
+        documentId={documentId}
+        onToggleComments={() => setCommentsVisible(v => !v)}
       />
       {findMode && (
         <FindReplace
@@ -537,19 +543,29 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
           <TableMenu editor={editor} />
           <ImageToolbar editor={editor} />
         </div>
+        {documentId && (
+          <CommentSidebar
+            editor={editor}
+            documentId={documentId}
+            visible={commentsVisible}
+            onToggle={() => setCommentsVisible(v => !v)}
+          />
+        )}
       </div>
       <StatusBar editor={editor} fileName={fileName} isDirty={isDirty} />
     </div>
   )
 }
 
-function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUndoStack, fmRedoStack }: {
+function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUndoStack, fmRedoStack, documentId, onToggleComments }: {
   editor: NonNullable<ReturnType<typeof useEditor>>,
   headingLevel: string,
   undoFrontMatter: () => boolean,
   redoFrontMatter: () => boolean,
   fmUndoStack: React.RefObject<(FrontMatterData | null)[]>,
   fmRedoStack: React.RefObject<(FrontMatterData | null)[]>,
+  documentId?: string | null,
+  onToggleComments: () => void,
 }) {
   const canUndo = editor.can().undo() || fmUndoStack.current.length > 0
   const canRedo = editor.can().redo() || fmRedoStack.current.length > 0
@@ -730,6 +746,34 @@ function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUnd
         onClick={handleRedo}
         className={canRedo ? '' : 'disabled'}
       />
+
+      {documentId && (
+        <>
+          <span className="toolbar-separator" />
+          <ToolbarButton
+            label="💬" title="Add Comment"
+            onClick={async () => {
+              const { from, to } = editor.state.selection
+              if (from === to) {
+                onToggleComments()
+                return
+              }
+              const commentText = window.prompt('Add a comment:')
+              if (!commentText?.trim()) return
+              const res = await fetch(`/api/documents/${documentId}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: commentText.trim() }),
+              })
+              if (res.ok) {
+                const comment = await res.json()
+                editor.chain().focus().setComment(comment.id).run()
+                onToggleComments()
+              }
+            }}
+          />
+        </>
+      )}
     </div>
   )
 }
