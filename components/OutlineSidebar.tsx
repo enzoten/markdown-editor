@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
+import { AlignLeft, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface HeadingItem {
   id: string
@@ -24,14 +27,12 @@ export default function OutlineSidebar({
   const observerRef = useRef<IntersectionObserver | null>(null)
   const headingElemsRef = useRef<Map<string, Element>>(new Map())
 
-  // Extract headings from the editor document
   const extractHeadings = useCallback(() => {
     const items: HeadingItem[] = []
     editor.state.doc.descendants((node, pos) => {
       if (node.type.name === 'heading') {
-        const id = `heading-${pos}`
         items.push({
-          id,
+          id: `heading-${pos}`,
           level: node.attrs.level as number,
           text: node.textContent,
           pos,
@@ -41,7 +42,6 @@ export default function OutlineSidebar({
     setHeadings(items)
   }, [editor])
 
-  // Extract headings on mount and on document changes (debounced)
   useEffect(() => {
     extractHeadings()
     let timer: ReturnType<typeof setTimeout>
@@ -53,17 +53,13 @@ export default function OutlineSidebar({
     return () => { clearTimeout(timer); editor.off('update', handler) }
   }, [editor, extractHeadings])
 
-  // Set up IntersectionObserver for scroll-based active heading tracking
   useEffect(() => {
     if (!visible) return
 
-    // Clean up old observer
     observerRef.current?.disconnect()
     headingElemsRef.current.clear()
 
     const editorEl = editor.view.dom
-
-    // Find all heading DOM elements and map them to our heading items
     const headingElements = editorEl.querySelectorAll('h1, h2, h3, h4, h5, h6')
     const elemToId = new Map<Element, string>()
 
@@ -74,7 +70,6 @@ export default function OutlineSidebar({
       }
     })
 
-    // Track which headings are visible, highlight the topmost one
     const visibleIds = new Set<string>()
 
     observerRef.current = new IntersectionObserver(
@@ -82,14 +77,10 @@ export default function OutlineSidebar({
         entries.forEach((entry) => {
           const id = elemToId.get(entry.target)
           if (!id) return
-          if (entry.isIntersecting) {
-            visibleIds.add(id)
-          } else {
-            visibleIds.delete(id)
-          }
+          if (entry.isIntersecting) visibleIds.add(id)
+          else visibleIds.delete(id)
         })
 
-        // Find the first visible heading (topmost in document order)
         for (const h of headings) {
           if (visibleIds.has(h.id)) {
             setActiveId(h.id)
@@ -97,81 +88,77 @@ export default function OutlineSidebar({
           }
         }
 
-        // If no heading is visible, find the last heading above the viewport
         if (visibleIds.size === 0 && headings.length > 0) {
           const scrollContainer = editorEl.closest('.editor-content') || editorEl
           const containerRect = scrollContainer.getBoundingClientRect()
-
           let lastAbove: string | null = null
           for (const h of headings) {
             const el = headingElemsRef.current.get(h.id)
             if (el) {
               const rect = el.getBoundingClientRect()
-              if (rect.top < containerRect.top + 50) {
-                lastAbove = h.id
-              }
+              if (rect.top < containerRect.top + 50) lastAbove = h.id
             }
           }
           if (lastAbove) setActiveId(lastAbove)
         }
       },
-      {
-        rootMargin: '-10px 0px -60% 0px',
-        threshold: 0,
-      }
+      { rootMargin: '-10px 0px -60% 0px', threshold: 0 },
     )
 
-    headingElements.forEach((el) => {
-      observerRef.current?.observe(el)
-    })
-
+    headingElements.forEach((el) => observerRef.current?.observe(el))
     return () => { observerRef.current?.disconnect() }
   }, [editor, headings, visible])
 
   const handleClick = (heading: HeadingItem) => {
-    // Find the DOM element for this heading and scroll to it
     const headingElements = editor.view.dom.querySelectorAll('h1, h2, h3, h4, h5, h6')
     const idx = headings.findIndex(h => h.id === heading.id)
     if (idx >= 0 && headingElements[idx]) {
       headingElements[idx].scrollIntoView({ behavior: 'smooth', block: 'start' })
-      // Also place the cursor at the heading
       editor.chain().focus().setTextSelection(heading.pos + 1).run()
     }
   }
 
   if (!visible) {
     return (
-      <button className="outline-toggle outline-toggle--collapsed" onClick={onToggle} title="Show outline (Cmd+Shift+O)" aria-label="Show document outline" aria-expanded={false}>
-        <span className="outline-toggle-icon">&#9776;</span>
+      <button
+        className="flex items-start border-r border-border bg-transparent p-2 text-muted-foreground hover:bg-accent"
+        onClick={onToggle}
+        title="Show outline (Cmd+Shift+O)"
+        aria-label="Show document outline"
+        aria-expanded={false}
+      >
+        <AlignLeft className="h-4 w-4" />
       </button>
     )
   }
 
-  // Compute min heading level for indentation normalization
   const minLevel = headings.length > 0 ? Math.min(...headings.map(h => h.level)) : 1
 
   return (
-    <aside className="outline-sidebar" aria-label="Document outline">
-      <div className="outline-header">
-        <span className="outline-title">Outline</span>
-        <button className="outline-toggle" onClick={onToggle} title="Hide outline (Cmd+Shift+O)" aria-label="Hide document outline" aria-expanded={true}>
-          &times;
-        </button>
+    <aside className="flex w-52 min-w-[160px] flex-col border-r border-border bg-muted/30" aria-label="Document outline">
+      <div className="flex items-center border-b border-border px-3 py-2">
+        <span className="flex-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Outline</span>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onToggle} title="Hide outline (Cmd+Shift+O)">
+          <X className="h-3.5 w-3.5" />
+        </Button>
       </div>
-      <nav className="outline-list">
+      <nav className="flex-1 overflow-y-auto py-1">
         {headings.length === 0 ? (
-          <div className="outline-empty">No headings yet</div>
+          <div className="px-3 py-4 text-center text-xs text-muted-foreground">No headings yet</div>
         ) : (
           headings.map((h) => (
             <button
               key={h.id}
-              className={`outline-item ${activeId === h.id ? 'outline-item--active' : ''}`}
-              style={{ paddingLeft: `${(h.level - minLevel) * 16 + 12}px` }}
+              className={cn(
+                'flex w-full items-center text-left text-xs py-1 pr-2 border-l-2 border-transparent hover:bg-accent/50 transition-colors',
+                activeId === h.id && 'border-l-primary bg-accent text-accent-foreground font-medium',
+              )}
+              style={{ paddingLeft: `${(h.level - minLevel) * 14 + 12}px` }}
               onClick={() => handleClick(h)}
               title={h.text}
               aria-current={activeId === h.id ? 'location' : undefined}
             >
-              <span className="outline-item-text">{h.text}</span>
+              <span className="truncate">{h.text}</span>
             </button>
           ))
         )}

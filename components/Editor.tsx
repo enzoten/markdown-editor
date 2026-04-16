@@ -508,7 +508,7 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
 
   return (
     <div
-      className="editor-wrapper"
+      className="relative flex w-full flex-col overflow-hidden border-l border-border bg-card"
       onDragEnter={(e) => {
         e.preventDefault()
         dragCountRef.current++
@@ -525,8 +525,8 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
       }}
     >
       {draggingOver && (
-        <div className="drop-overlay">
-          <div className="drop-overlay-content">Drop image to insert</div>
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded">
+          <div className="rounded-lg bg-card px-6 py-3 text-sm font-medium text-primary shadow-lg">Drop image to insert</div>
         </div>
       )}
       <Toolbar
@@ -546,13 +546,13 @@ export default function Editor({ documentId }: { documentId?: string | null }) {
           onClose={() => setFindMode(null)}
         />
       )}
-      <div className="editor-body">
+      <div className="flex flex-1 overflow-hidden">
         <OutlineSidebar
           editor={editor}
           visible={outlineVisible}
           onToggle={() => setOutlineVisible(v => !v)}
         />
-        <div className="editor-main">
+        <div className="relative flex flex-1 flex-col overflow-hidden">
           <FrontMatterPanel data={frontMatter} onChange={updateFrontMatter} />
           <EditorContent editor={editor} className="editor-content" />
           <LinkBubble editor={editor} />
@@ -800,14 +800,14 @@ function StatusBar({ editor, fileName, isDirty }: {
   if (editor.isActive('link')) activeMarks.push('Link')
 
   return (
-    <div className="status-bar" role="status" aria-live="polite">
-      <span className="status-filename">{fileName}{isDirty ? ' ●' : ''}</span>
-      <span className="status-separator">·</span>
+    <div className="flex items-center gap-2 border-t border-border bg-muted/30 px-3 py-1 text-[11px] text-muted-foreground" role="status" aria-live="polite">
+      <span>{fileName}{isDirty ? ' \u25cf' : ''}</span>
+      <span className="text-border">\u00b7</span>
       <span>{wordCount} words</span>
-      {from !== to && <span> · {to - from} selected</span>}
+      {from !== to && <span>\u00b7 {to - from} selected</span>}
       {activeMarks.length > 0 && (
-        <span className="status-marks">
-          {activeMarks.map(m => <span key={m} className="state-badge">{m}</span>)}
+        <span className="flex gap-1 ml-auto">
+          {activeMarks.map(m => <span key={m} className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium">{m}</span>)}
         </span>
       )}
     </div>
