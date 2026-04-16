@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { signOut } from 'next-auth/react'
 import Editor from '@/components/Editor'
 import FileTree from '@/components/FileTree'
+import { Button } from '@/components/ui/button'
 
 export default function AppShell({ user }: { user: { name?: string | null; email?: string | null; image?: string | null } }) {
   const [activeDocId, setActiveDocId] = useState<string | null>(null)
@@ -29,7 +30,6 @@ export default function AppShell({ user }: { user: { name?: string | null; email
     }
   }, [])
 
-  // Keyboard shortcut: Cmd+Shift+E to toggle file tree
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
@@ -43,15 +43,13 @@ export default function AppShell({ user }: { user: { name?: string | null; email
   }, [])
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>Markdown Editor</h1>
-        <div className="app-header-right">
-          <span className="user-name">{user.name || user.email}</span>
-          <button className="auth-btn" onClick={() => signOut()}>Sign out</button>
-        </div>
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
+      <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-2">
+        <h1 className="flex-1 text-sm font-semibold text-muted-foreground tracking-wide">Markdown Editor</h1>
+        <span className="text-xs text-muted-foreground">{user.name || user.email}</span>
+        <Button variant="outline" size="sm" onClick={() => signOut()}>Sign out</Button>
       </header>
-      <div className="app-body">
+      <div className="flex flex-1 overflow-hidden">
         <FileTree
           activeDocId={activeDocId}
           onOpen={handleOpen}
@@ -59,13 +57,13 @@ export default function AppShell({ user }: { user: { name?: string | null; email
           visible={fileTreeVisible}
           onToggle={() => setFileTreeVisible(v => !v)}
         />
-        <main className="app-main">
+        <main className="flex-1 flex overflow-hidden">
           {activeDocId ? (
             <Editor key={activeDocId} documentId={activeDocId} />
           ) : (
-            <div className="app-empty">
-              <p>Select a document or create a new one.</p>
-              <button className="doc-new-btn" onClick={handleNew}>+ New Document</button>
+            <div className="flex flex-col items-center justify-center h-full w-full text-muted-foreground gap-4">
+              <p className="text-sm">Select a document or create a new one.</p>
+              <Button onClick={handleNew}>+ New Document</Button>
             </div>
           )}
         </main>

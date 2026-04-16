@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { FileText, Plus, X, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface DocSummary {
   id: string
@@ -37,7 +40,6 @@ export default function FileTree({
 
   useEffect(() => { fetchDocuments() }, [fetchDocuments])
 
-  // Refresh doc list when active document changes (e.g., after auto-save updates title)
   useEffect(() => {
     const timer = setInterval(fetchDocuments, 10000)
     return () => clearInterval(timer)
@@ -49,7 +51,7 @@ export default function FileTree({
     await fetch(`/api/documents/${id}`, { method: 'DELETE' })
     fetchDocuments()
     if (activeDocId === id) {
-      onOpen('')  // clear active doc
+      onOpen('')
     }
   }
 
@@ -85,47 +87,46 @@ export default function FileTree({
   if (!visible) {
     return (
       <button
-        className="filetree-toggle filetree-toggle--collapsed"
+        className="flex items-start border-r border-border bg-transparent p-2 text-muted-foreground hover:bg-accent"
         onClick={onToggle}
         title="Show file tree (Cmd+Shift+E)"
         aria-label="Show file tree"
         aria-expanded={false}
       >
-        <span className="filetree-toggle-icon">&#128196;</span>
+        <FileText className="h-4 w-4" />
       </button>
     )
   }
 
   return (
-    <aside className="filetree-sidebar" aria-label="File tree">
-      <div className="filetree-header">
-        <span className="filetree-title">Documents</span>
-        <button className="filetree-new" onClick={onNew} title="New document">+</button>
-        <button
-          className="filetree-toggle"
-          onClick={onToggle}
-          title="Hide file tree (Cmd+Shift+E)"
-          aria-label="Hide file tree"
-          aria-expanded={true}
-        >
-          &times;
-        </button>
+    <aside className="flex w-56 min-w-[180px] flex-col border-r border-border bg-muted/50" aria-label="File tree">
+      <div className="flex items-center gap-1 border-b border-border px-3 py-2">
+        <span className="flex-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Documents</span>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onNew} title="New document">
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onToggle} title="Hide file tree (Cmd+Shift+E)">
+          <X className="h-3.5 w-3.5" />
+        </Button>
       </div>
-      <nav className="filetree-list">
+      <nav className="flex-1 overflow-y-auto py-1">
         {documents.length === 0 ? (
-          <div className="filetree-empty">No documents</div>
+          <div className="px-3 py-4 text-center text-xs text-muted-foreground">No documents</div>
         ) : (
           documents.map(doc => (
             <div
               key={doc.id}
-              className={`filetree-item ${activeDocId === doc.id ? 'filetree-item--active' : ''}`}
+              className={cn(
+                'group flex items-center gap-2 border-l-2 border-transparent px-3 py-1.5 cursor-pointer hover:bg-accent/50',
+                activeDocId === doc.id && 'border-l-primary bg-accent text-accent-foreground',
+              )}
               onClick={() => onOpen(doc.id)}
             >
-              <span className="filetree-item-icon">&#128196;</span>
+              <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               {editingId === doc.id ? (
                 <input
                   ref={renameInputRef}
-                  className="filetree-rename-input"
+                  className="flex-1 min-w-0 rounded border border-ring bg-background px-1.5 py-0.5 text-xs outline-none"
                   value={editingTitle}
                   onChange={e => setEditingTitle(e.target.value)}
                   onBlur={() => handleRenameSubmit(doc.id)}
@@ -135,18 +136,21 @@ export default function FileTree({
                 />
               ) : (
                 <span
-                  className="filetree-item-title"
+                  className={cn(
+                    'flex-1 truncate text-xs',
+                    activeDocId === doc.id ? 'font-medium text-primary' : 'text-foreground',
+                  )}
                   onDoubleClick={e => handleRenameStart(e, doc)}
                 >
                   {doc.title || 'Untitled'}
                 </span>
               )}
               <button
-                className="filetree-item-delete"
+                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
                 onClick={e => handleDelete(e, doc.id)}
                 title="Delete"
               >
-                &times;
+                <Trash2 className="h-3 w-3" />
               </button>
             </div>
           ))

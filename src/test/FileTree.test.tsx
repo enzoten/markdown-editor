@@ -39,8 +39,8 @@ describe('FileTree', () => {
       <FileTree activeDocId="1" onOpen={() => {}} onNew={() => {}} visible={true} onToggle={() => {}} />
     )
     await waitFor(() => {
-      const item = screen.getByText('First Doc').closest('.filetree-item')
-      expect(item).toHaveClass('filetree-item--active')
+      const titleEl = screen.getByText('First Doc')
+      expect(titleEl).toHaveClass('font-medium')
     })
   })
 

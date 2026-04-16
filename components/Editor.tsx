@@ -27,6 +27,10 @@ import ImageToolbar from '@/components/ImageToolbar'
 import CommentSidebar from '@/components/CommentSidebar'
 import CommentPopover from '@/components/CommentPopover'
 import { CommentMark } from '@/lib/commentMark'
+import { Toggle } from '@/components/ui/toggle'
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
+import { Separator } from '@/components/ui/separator'
+import { Link2, ImageIcon, List, ListOrdered, ListChecks, Quote, Minus, Code, Table2 as TableIcon, Undo, Redo, MessageSquare } from 'lucide-react'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 
 const lowlight = createLowlight(common)
@@ -615,12 +619,10 @@ function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUnd
 
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault()
-      const next = buttons[(idx + 1) % buttons.length]
-      next?.focus()
+      buttons[(idx + 1) % buttons.length]?.focus()
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       e.preventDefault()
-      const prev = buttons[(idx - 1 + buttons.length) % buttons.length]
-      prev?.focus()
+      buttons[(idx - 1 + buttons.length) % buttons.length]?.focus()
     } else if (e.key === 'Home') {
       e.preventDefault()
       buttons[0]?.focus()
@@ -631,176 +633,145 @@ function Toolbar({ editor, headingLevel, undoFrontMatter, redoFrontMatter, fmUnd
   }
 
   return (
-    <div className="toolbar" role="toolbar" aria-label="Formatting toolbar" onKeyDown={handleToolbarKeyDown}>
-      {/* Block type selector */}
-      <select
-        value={headingLevel}
-        onChange={(e) => {
-          const level = parseInt(e.target.value)
-          if (level === 0) {
-            editor.chain().focus().setParagraph().run()
-          } else {
-            editor.chain().focus().toggleHeading({ level: level as 1|2|3|4|5|6 }).run()
-          }
-        }}
-        title="Block type"
-        aria-label="Block type"
-        tabIndex={0}
+    <TooltipProvider delayDuration={300}>
+      <div
+        className="flex items-center gap-0.5 border-b border-border bg-muted/30 px-2 py-1 flex-wrap"
+        role="toolbar"
+        aria-label="Formatting toolbar"
+        onKeyDown={handleToolbarKeyDown}
       >
-        <option value="0">Paragraph</option>
-        <option value="1">Heading 1</option>
-        <option value="2">Heading 2</option>
-        <option value="3">Heading 3</option>
-        <option value="4">Heading 4</option>
-        <option value="5">Heading 5</option>
-        <option value="6">Heading 6</option>
-      </select>
+        <select
+          value={headingLevel}
+          onChange={(e) => {
+            const level = parseInt(e.target.value)
+            if (level === 0) {
+              editor.chain().focus().setParagraph().run()
+            } else {
+              editor.chain().focus().toggleHeading({ level: level as 1|2|3|4|5|6 }).run()
+            }
+          }}
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+          aria-label="Block type"
+        >
+          <option value="0">Paragraph</option>
+          <option value="1">Heading 1</option>
+          <option value="2">Heading 2</option>
+          <option value="3">Heading 3</option>
+          <option value="4">Heading 4</option>
+          <option value="5">Heading 5</option>
+          <option value="6">Heading 6</option>
+        </select>
 
-      <span className="toolbar-separator" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
-      {/* Inline formatting */}
-      <ToolbarButton
-        label="B" title="Bold (Cmd+B)"
-        active={editor.isActive('bold')}
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        style={{ fontWeight: 700 }}
-      />
-      <ToolbarButton
-        label="I" title="Italic (Cmd+I)"
-        active={editor.isActive('italic')}
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        style={{ fontStyle: 'italic' }}
-      />
-      <ToolbarButton
-        label="S" title="Strikethrough (Cmd+Shift+X)"
-        active={editor.isActive('strike')}
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-        style={{ textDecoration: 'line-through' }}
-      />
-      <ToolbarButton
-        label="<>" title="Inline Code (Cmd+E)"
-        active={editor.isActive('code')}
-        onClick={() => editor.chain().focus().toggleCode().run()}
-        className="code-btn"
-      />
+        <TBtn tip="Bold (Cmd+B)" pressed={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
+          <span className="font-bold">B</span>
+        </TBtn>
+        <TBtn tip="Italic (Cmd+I)" pressed={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}>
+          <span className="italic">I</span>
+        </TBtn>
+        <TBtn tip="Strikethrough (Cmd+Shift+X)" pressed={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}>
+          <span className="line-through">S</span>
+        </TBtn>
+        <TBtn tip="Inline Code (Cmd+E)" pressed={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()}>
+          <span className="font-mono text-[10px]">&lt;&gt;</span>
+        </TBtn>
 
-      <span className="toolbar-separator" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
-      {/* Links & Media */}
-      <ToolbarButton
-        label="🔗" title="Link (Cmd+K)"
-        active={editor.isActive('link')}
-        onClick={() => {
+        <TBtn tip="Link (Cmd+K)" pressed={editor.isActive('link')} onClick={() => {
           if (editor.isActive('link')) {
             editor.chain().focus().unsetLink().run()
           } else {
             const url = window.prompt('URL:')
             if (url) editor.chain().focus().setLink({ href: url }).run()
           }
-        }}
-      />
-      <ToolbarButton
-        label="🖼" title="Image"
-        onClick={() => {
+        }}>
+          <Link2 className="h-3.5 w-3.5" />
+        </TBtn>
+        <TBtn tip="Image" onClick={() => {
           const url = window.prompt('Image URL:')
           if (url) editor.chain().focus().setImage({ src: url }).run()
-        }}
-      />
+        }}>
+          <ImageIcon className="h-3.5 w-3.5" />
+        </TBtn>
 
-      <span className="toolbar-separator" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
-      {/* Lists */}
-      <ToolbarButton
-        label="•" title="Bullet List (Cmd+Shift+8)"
-        active={editor.isActive('bulletList')}
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-      />
-      <ToolbarButton
-        label="1." title="Ordered List (Cmd+Shift+7)"
-        active={editor.isActive('orderedList')}
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-      />
-      <ToolbarButton
-        label="☐" title="Task List (Cmd+Shift+9)"
-        active={editor.isActive('taskList')}
-        onClick={() => editor.chain().focus().toggleTaskList().run()}
-      />
+        <TBtn tip="Bullet List (Cmd+Shift+8)" pressed={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+          <List className="h-3.5 w-3.5" />
+        </TBtn>
+        <TBtn tip="Ordered List (Cmd+Shift+7)" pressed={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+          <ListOrdered className="h-3.5 w-3.5" />
+        </TBtn>
+        <TBtn tip="Task List (Cmd+Shift+9)" pressed={editor.isActive('taskList')} onClick={() => editor.chain().focus().toggleTaskList().run()}>
+          <ListChecks className="h-3.5 w-3.5" />
+        </TBtn>
 
-      <span className="toolbar-separator" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
-      {/* Block structures */}
-      <ToolbarButton
-        label="❝" title="Blockquote (Cmd+Shift+.)"
-        active={editor.isActive('blockquote')}
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-      />
-      <ToolbarButton
-        label="—" title="Horizontal Rule (Cmd+Shift+-)"
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-      />
-      <ToolbarButton
-        label="{ }" title="Code Block (Cmd+Shift+C)"
-        active={editor.isActive('codeBlock')}
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        className="code-btn"
-      />
-      <ToolbarButton
-        label="⊞" title="Table"
-        active={editor.isActive('table')}
-        onClick={() => {
+        <TBtn tip="Blockquote (Cmd+Shift+.)" pressed={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+          <Quote className="h-3.5 w-3.5" />
+        </TBtn>
+        <TBtn tip="Horizontal Rule (Cmd+Shift+-)" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+          <Minus className="h-3.5 w-3.5" />
+        </TBtn>
+        <TBtn tip="Code Block (Cmd+Shift+C)" pressed={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+          <Code className="h-3.5 w-3.5" />
+        </TBtn>
+        <TBtn tip="Table" pressed={editor.isActive('table')} onClick={() => {
           if (editor.isActive('table')) return
           editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-        }}
-      />
+        }}>
+          <TableIcon className="h-3.5 w-3.5" />
+        </TBtn>
 
-      <span className="toolbar-separator" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
-      {/* Undo / Redo */}
-      <ToolbarButton
-        label="↩" title="Undo (Cmd+Z)"
-        onClick={handleUndo}
-        className={canUndo ? '' : 'disabled'}
-      />
-      <ToolbarButton
-        label="↪" title="Redo (Cmd+Shift+Z)"
-        onClick={handleRedo}
-        className={canRedo ? '' : 'disabled'}
-      />
+        <TBtn tip="Undo (Cmd+Z)" onClick={handleUndo} disabled={!canUndo}>
+          <Undo className="h-3.5 w-3.5" />
+        </TBtn>
+        <TBtn tip="Redo (Cmd+Shift+Z)" onClick={handleRedo} disabled={!canRedo}>
+          <Redo className="h-3.5 w-3.5" />
+        </TBtn>
 
-      {documentId && (
-        <>
-          <span className="toolbar-separator" />
-          <ToolbarButton
-            label="💬" title="Add Comment"
-            onClick={onComment}
-          />
-        </>
-      )}
-    </div>
+        {documentId && (
+          <>
+            <Separator orientation="vertical" className="mx-1 h-6" />
+            <TBtn tip="Add Comment" onClick={onComment}>
+              <MessageSquare className="h-3.5 w-3.5" />
+            </TBtn>
+          </>
+        )}
+      </div>
+    </TooltipProvider>
   )
 }
 
-function ToolbarButton({ label, title, active, onClick, style, className, tabIndex }: {
-  label: string
-  title: string
-  active?: boolean
+function TBtn({ tip, pressed, onClick, disabled, children }: {
+  tip: string
+  pressed?: boolean
   onClick: () => void
-  style?: React.CSSProperties
-  className?: string
-  tabIndex?: number
+  disabled?: boolean
+  children: React.ReactNode
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={[className, active ? 'active' : ''].filter(Boolean).join(' ')}
-      title={title}
-      style={style}
-      aria-pressed={active}
-      aria-label={title}
-      tabIndex={tabIndex ?? -1}
-    >
-      {label}
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Toggle
+          size="sm"
+          pressed={pressed}
+          onPressedChange={() => onClick()}
+          disabled={disabled}
+          aria-label={tip}
+          tabIndex={-1}
+          className="h-8 w-8 p-0"
+        >
+          {children}
+        </Toggle>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{tip}</TooltipContent>
+    </Tooltip>
   )
 }
 

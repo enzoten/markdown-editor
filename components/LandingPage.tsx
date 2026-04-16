@@ -1,18 +1,19 @@
 'use client'
 
 import { signIn } from 'next-auth/react'
+import { Button } from '@/components/ui/button'
 
 export default function LandingPage() {
   return (
-    <div className="landing">
-      <div className="landing-card">
-        <h1 className="landing-title">Markdown Editor</h1>
-        <p className="landing-subtitle">
+    <div className="flex h-screen items-center justify-center bg-background">
+      <div className="text-center max-w-md px-8">
+        <h1 className="text-3xl font-bold text-foreground mb-3">Markdown Editor</h1>
+        <p className="text-muted-foreground leading-relaxed mb-8">
           A WYSIWYG editor with zero syntax reveal. Write clean GitHub Flavored Markdown without ever seeing raw syntax.
         </p>
-        <button className="landing-signin" onClick={() => signIn('google')}>
+        <Button size="lg" onClick={() => signIn('google')}>
           Sign in with Google
-        </button>
+        </Button>
       </div>
     </div>
   )
